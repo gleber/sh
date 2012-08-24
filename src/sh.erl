@@ -26,7 +26,7 @@
 -module(sh).
 
 -export([run/2,
-         sh/2, 
+         sh/2,
          exec/2,
          exec/3,
          stop/1,
@@ -76,7 +76,7 @@ exec(Command, Env, Dir) ->
     sh_loop(Port).
 
 run(Cmd, Opts) ->
-    Dir = proplists:get_value(dir, Opts, element(2, file:get_cwd())),
+    Dir = proplists:get_value(cd, Opts, element(2, file:get_cwd())),
     Env = proplists:get_value(env, Opts, []),
 
     %% Try to be smart about the provided command. If it's got any && or ; in it,
