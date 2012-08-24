@@ -26,9 +26,8 @@
 -module(sh).
 
 -export([run/2,
-         sh/2,
-         exec/2,
-         exec/3,
+         sh/2,   sh/3,
+         exec/2, exec/3,
          stop/1,
          stop_all/0,
          kill/1,
@@ -66,6 +65,9 @@ sh(Command0, Options0) ->
         {error, {_Rc, _Output}=Err} ->
             ErrorHandler(Command, Err)
     end.
+
+sh(Command, Args, Options) ->
+    sh(?FMT(Command, Args), Options).
 
 exec(Command, Env) ->
     exec(Command, Env, element(2, file:get_cwd())).
