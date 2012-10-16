@@ -193,6 +193,9 @@ expand_sh_flag({use_stdout, false}) ->
      fun(Line, Acc) ->
              [Line | Acc]
      end};
+expand_sh_flag({output_handler, Fun}) ->
+    {output_handler,
+     Fun};
 expand_sh_flag({cd, _CdArg} = Cd) ->
     {port_settings, Cd};
 expand_sh_flag({env, _EnvArg} = Env) ->
