@@ -92,8 +92,8 @@ run(Cmd, Opts) ->
             case proplists:get_bool(async, Opts) of
                 true ->
                     error({options,
-                        ?FMT("Async option not allowed with sh:run/2 when command"
-                               " contains '&&' or ';': ~s\n", [Cmd])});
+                           ?FMT("Async option not allowed with sh:run/2 when command"
+                                " contains '&&' or ';': ~s\n", [Cmd])});
                 false ->
                     ok
             end
@@ -146,7 +146,7 @@ patch_on_windows(Cmd, Env) ->
     case os:type() of
         {win32,nt} ->
             "cmd /q /c " ++ lists:foldl(fun({Key, Value}, Acc) ->
-                                            expand_env_variable(Acc, Key, Value)
+                                                expand_env_variable(Acc, Key, Value)
                                         end, Cmd, Env);
         _ ->
             Cmd
@@ -209,7 +209,7 @@ log_msg_and_abort(Message) ->
 -spec log_and_abort(string(), {integer(), string()}) -> no_return().
 log_and_abort(Command, {Rc, Output}) ->
     io:format("~s failed with error: ~w and output:~n~s~n",
-                [Command, Rc, Output]),
+              [Command, Rc, Output]),
     error({Rc, Output}).
 
 sh_loop(Port, Fun, Acc) ->
