@@ -33,7 +33,9 @@
          kill/1,
          expect/2,
          expect/3,
-         send/2]).
+         send/2,
+
+         params/1]).
 
 -record(sh, {pid, port, opts}).
 -define(FMT(Str, Args), lists:flatten(io_lib:format(Str, Args))).
@@ -137,6 +139,33 @@ expect(Ref, Regex, RegexOpts) ->
 send(Ref, Line) ->
     #sh { port = Port } = erlang:get(Ref),
     port_command(Port, Line).
+
+
+params(Params) ->
+    lists:flatten(params0(Params)).
+
+params0([]) ->
+    [];
+params0([{A, V} | List]) when is_atom(A) ->
+    params0([{atom_to_list(A), V} | List]);
+params0([A | List]) when is_atom(A) ->
+    params0([atom_to_list(A) | List]);
+params0([{_K, undefined} | List]) ->
+    params0(List);
+params0([undefined | List]) ->
+    params0(List);
+params0([{[A], V} | List]) when is_integer(V) ->
+    [ io_lib:format("-~s ~b ", [[A], V]) | params0(List) ];
+params0([{[A], V} | List]) ->
+    [ io_lib:format("-~s \"~s\" ", [[A], V]) | params0(List) ];
+params0([{K, V} | List]) when is_integer(V) ->
+    [ io_lib:format("--~s ~b ", [K, V]) | params0(List) ];
+params0([{K, V} | List]) ->
+    [ io_lib:format("--~s \"~s\" ", [K, V]) | params0(List) ];
+params0([[A] | List]) ->
+    [ io_lib:format("-~s ", [[A]]) | params0(List) ];
+params0([K | List]) ->
+    [ io_lib:format("--~s ", [K]) | params0(List) ].
 
 %% ====================================================================
 %% Internal functions
