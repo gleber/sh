@@ -26,7 +26,7 @@
 -module(sh).
 
 -export([run/2,
-         sh/2,   sh/3,
+         sh/1,   sh/2,   sh/3,
          exec/2, exec/3,
          stop/1,
          stop_all/0,
@@ -48,6 +48,8 @@
 %% Env = [{string(), Val}]
 %% Val = string() | false
 %%
+sh(Command0) ->
+    sh(Command0, []).
 sh(Command0, Options0) ->
     DefaultOptions = [use_stdout, abort_on_error],
     Options = [expand_sh_flag(V)
@@ -59,7 +61,7 @@ sh(Command0, Options0) ->
     Command = patch_on_windows(Command0, proplists:get_value(env, Options, [])),
     PortSettings = proplists:get_all_values(port_settings, Options) ++
         [exit_status, {line, 16384}, use_stdio, stderr_to_stdout, hide],
-    Port = open_port({spawn, Command}, PortSettings),
+    Port = open_port({spawn, binary_to_list(iolist_to_binary(Command))}, PortSettings),
 
     case sh_loop(Port, OutputHandler, []) of
         {ok, _Output} = Ok ->
