@@ -25,9 +25,10 @@
 %% -----------------------------------------------------------------------------
 -module(sh).
 
--export([run/2,
-         sh/1,   sh/2,   sh/3,
+-export([sh/1,   sh/2,   sh/3,
          exec/2, exec/3,
+
+         run/2,
          stop/1,
          stop_all/0,
          kill/1,
@@ -80,6 +81,9 @@ exec(Command, Env, Dir) ->
     Port = open_port({spawn, Command}, [{cd, Dir}, {env, Env}, exit_status, {line, 16384},
                                         use_stdio, stderr_to_stdout]),
     sh_loop(Port).
+
+
+
 
 run(Cmd, Opts) ->
     Dir = proplists:get_value(cd, Opts, element(2, file:get_cwd())),
@@ -144,30 +148,47 @@ send(Ref, Line) ->
 
 
 params(Params) ->
-    lists:flatten(params0(Params)).
+    params(Params, []).
+params(Params, Opts) ->
+    Sep = proplists:get_value(sep, Opts, " -- "),
+    Eq = proplists:get_value(eq, Opts, "="),
+    {Args, Ps} = lists:partition(fun is_tuple/1, Params),
+    A = case Args of
+            [] -> [];
+            _ -> [args(Args, Eq), Sep]
+        end,
+    lists:flatten([ A, [ [argval(X), " "] || X <- Ps, X /= undefined ]]).
 
-params0([]) ->
+argval(N) when is_integer(N) ->
+    io_lib:format("~b", [N]);
+argval(A) ->
+    io_lib:format("\"~s\"", [A]).
+
+argkey(A) when is_atom(A) ->
+    argkey(atom_to_list(A));
+argkey(A) when is_binary(A) ->
+    argkey(binary_to_list(A));
+argkey([A]) ->
+    io_lib:format("-~s", [[A]]);
+argkey(S) ->
+    io_lib:format("--~s", [S]).
+
+
+args([], _Eq) ->
     [];
-params0([{A, V} | List]) when is_atom(A) ->
-    params0([{atom_to_list(A), V} | List]);
-params0([A | List]) when is_atom(A) ->
-    params0([atom_to_list(A) | List]);
-params0([{_K, undefined} | List]) ->
-    params0(List);
-params0([undefined | List]) ->
-    params0(List);
-params0([{[A], V} | List]) when is_integer(V) ->
-    [ io_lib:format("-~s ~b ", [[A], V]) | params0(List) ];
-params0([{[A], V} | List]) ->
-    [ io_lib:format("-~s \"~s\" ", [[A], V]) | params0(List) ];
-params0([{K, V} | List]) when is_integer(V) ->
-    [ io_lib:format("--~s ~b ", [K, V]) | params0(List) ];
-params0([{K, V} | List]) ->
-    [ io_lib:format("--~s \"~s\" ", [K, V]) | params0(List) ];
-params0([[A] | List]) ->
-    [ io_lib:format("-~s ", [[A]]) | params0(List) ];
-params0([K | List]) ->
-    [ io_lib:format("--~s ", [K]) | params0(List) ].
+args([{_K, undefined} | List], Eq) ->
+    args(List, Eq);
+args([{A, V} | List], Eq) when is_atom(A) ->
+    args([{atom_to_list(A), V} | List], Eq);
+args([{A} | List], Eq) when is_atom(A) ->
+    args([{atom_to_list(A)} | List], Eq);
+args([A | List], Eq) when is_atom(A) ->
+    args([atom_to_list(A) | List], Eq);
+args([{K} | List], Eq) ->
+    [ io_lib:format("~s ", [argkey(K)]) | args(List, Eq) ];
+args([{K, V} | List], Eq) ->
+    [ io_lib:format("~s~s~s ", [argkey(K), Eq, argval(V)]) | args(List, Eq) ].
+
 
 %% ====================================================================
 %% Internal functions
