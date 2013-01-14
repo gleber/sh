@@ -15,8 +15,9 @@
 spawn(Opts) ->
     Dir = proplists:get_value(cd, Opts, element(2, file:get_cwd())),
     Env = proplists:get_value(env, Opts, []),
+    Prefix = proplists:get_value(prefix, Opts, ""),
 
-    ActualCmd = "/bin/sh -s unix:runner",
+    ActualCmd = string:strip(Prefix ++ " /bin/sh -s unix:runner"),
     Owner = self(),
     {Fun, Acc} = case proplists:get_value(fold, Opts) of
                      {_,_} = X -> X;
