@@ -131,7 +131,7 @@ stop(Ref) ->
     exit_loop(Port).
 
 join(Ref) ->
-    #sh { pid = Pid, port = Port } = erlang:get(Ref),
+    #sh { pid = _Pid, port = Port } = erlang:get(Ref),
     exit_loop(Port).
 
 stop_all() ->

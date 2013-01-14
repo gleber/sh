@@ -4,10 +4,10 @@
 
          exec/2, exec/3,
 
-         exec_stream_sync/4,
+         exec_stream_sync/4, exec_stream_sync/5,
 
          exec_aggregate/2, exec_aggregate/3,
-         exec_aggregate_sync/2]).
+         exec_aggregate_sync/2, exec_aggregate_sync/3]).
 
 -record(runner, {owner, port, opts}).
 -define(FMT(Str, Args), lists:flatten(io_lib:format(Str, Args))).
@@ -57,6 +57,13 @@ exec(Pid, Cmd, Fold) when is_function(Fold) ->
 exec(Pid, Cmd, {F, A}) ->
     Pid ! {cmd, Cmd, {F, A}}.
 
+exec_aggregate_sync(Pid, Cmd, Opts) ->
+    case proplists:get_value(cd, Opts) of
+        undefined -> ok;
+        Dir ->
+            exec_aggregate_sync(Pid, ["cd ", Dir])
+    end,
+    exec_aggregate_sync(Pid, Cmd).
 exec_aggregate_sync(Pid, Cmd) ->
     exec_aggregate(Pid, Cmd, self()),
     receive
@@ -90,6 +97,13 @@ cmd_stream_to(Owner, Ref, Parent, X, A) ->
         {error, Rc} ->
             error({Rc, lists:reverse(A)})
     end.
+
+exec_stream_sync(Pid, Cmd, Ref, Parent, Opts) ->
+    case proplists:get_value(cd, Opts) of
+        undefined -> ok;
+        Dir -> exec_aggregate_sync(Pid, ["cd ", Dir])
+    end,
+    exec_stream_sync(Pid, Cmd, Ref, Parent).
 
 exec_stream_sync(Pid, Cmd, Ref, Parent) ->
     Owner = self(),
