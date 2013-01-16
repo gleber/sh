@@ -29,7 +29,7 @@
          exec/2, exec/3,
 
          run/2,
-         stop/1,
+         stop/1, join/1,
          stop_all/0,
          kill/1,
          expect/2,
@@ -128,6 +128,10 @@ kill(Ref) ->
 stop(Ref) ->
     #sh { pid = Pid, port = Port } = erlang:get(Ref),
     _ = os:cmd(?FMT("kill ~s", [Pid])),
+    exit_loop(Port).
+
+join(Ref) ->
+    #sh { pid = _Pid, port = Port } = erlang:get(Ref),
     exit_loop(Port).
 
 stop_all() ->
