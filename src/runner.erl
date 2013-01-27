@@ -27,8 +27,8 @@ spawn(Opts) ->
                  end,
 
     Spawn = case proplists:get_value(link, Opts, true) of
-                true -> fun erlang:spawn/1;
-                false -> fun erlang:spawn_link/1
+                true -> fun erlang:spawn_link/1;
+                false -> fun erlang:spawn/1
             end,
 
     Spawn(fun() ->
