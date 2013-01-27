@@ -109,7 +109,7 @@ cmd_aggregate(Owner, X, A) ->
         {more, L} ->
             [L | A];
         done ->
-            [];
+            Owner ! {eoc, self(), 0, lists:reverse(A)}, [];
         {error, Rc} ->
             error({Rc, lists:reverse(A)})
     end.
@@ -124,7 +124,7 @@ cmd_stream_to(Owner, Ref, Parent, X, A) ->
         {more, L} ->
             Parent ! {Ref, line, L}, [];
         done ->
-            A;
+            Owner ! {eoc, self(), 0, lists:reverse(A)}, [];
         {error, Rc} ->
             error({Rc, lists:reverse(A)})
     end.
