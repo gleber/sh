@@ -132,6 +132,9 @@ stop(Ref) ->
 
 join(Ref) ->
     #sh { pid = _Pid, port = Port } = erlang:get(Ref),
+    %% erlang:port_close(Port),
+    %% exit(Port, shutdown),
+    %% _ = os:cmd(?FMT("kill ~s", [Pid])),
     exit_loop(Port).
 
 stop_all() ->
@@ -303,7 +306,7 @@ read_pid(Port) ->
 
 exit_loop(Port) ->
     receive
-        {Port, {data, {_, _}}} ->
+        {Port, {data, _}} ->
             exit_loop(Port);
         {Port, {exit_status, Rc}} ->
             {ok, Rc}
