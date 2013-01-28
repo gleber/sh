@@ -15,6 +15,7 @@
 spawn(Opts) ->
     Dir = proplists:get_value(cd, Opts, element(2, file:get_cwd())),
     Env = proplists:get_value(env, Opts, []),
+    ExitOnError = proplists:get_value(exit_on_error, Opts, false),
     Prefix = proplists:get_value(prefix, Opts, ""),
 
     ActualCmd = string:strip(Prefix ++ " /bin/sh -s unix:runner"),
@@ -25,33 +26,26 @@ spawn(Opts) ->
                          {fun(_, _) -> ok end, []}
                  end,
 
-    spawn_link(fun() ->
-                       Port = open_port({spawn, ActualCmd}, [{cd, Dir}, {env, Env},
-                                                             exit_status, {line, 16384}, binary,
-                                                             use_stdio, stderr_to_stdout]),
-                       link(Port),
-                       %% port_command(Port, "set -e"),
-                       loop(#runner{port = Port, owner = Owner, opts = Opts}, Fun, Acc)
-               end).
+    Spawn = case proplists:get_value(link, Opts, true) of
+                true -> fun erlang:spawn/1;
+                false -> fun erlang:spawn_link/1
+            end,
 
-cmd_aggregate(Owner, X, A) ->
-    case X of
-        {eoc, Error} ->
-            Owner ! {eoc, self(), Error, lists:reverse(A)},
-            [];
-        {line, L} ->
-            [L | A];
-        {more, L} ->
-            [L | A];
-        done ->
-            [];
-        {error, Rc} ->
-            error({Rc, lists:reverse(A)})
-    end.
+    Spawn(fun() ->
+                  Port = open_port({spawn, ActualCmd}, [{cd, Dir}, {env, Env},
+                                                        exit_status, {line, 16384}, binary,
+                                                        use_stdio, stderr_to_stdout]),
+                  link(Port),
+                  case ExitOnError of
+                      true ->
+                          port_command(Port, "set -e;\n");
+                      _ -> ok
+                  end,
+                  loop(#runner{port = Port, owner = Owner, opts = Opts}, Fun, Acc)
+          end).
 
 exec(Pid, Cmd) ->
     Pid ! {cmd, Cmd}.
-
 exec(Pid, Cmd, Fold) when is_function(Fold) ->
     Pid ! {cmd, Cmd, {Fold, []}};
 exec(Pid, Cmd, {F, A}) ->
@@ -81,23 +75,6 @@ exec_aggregate(Pid, Cmd, Owner) ->
            end,
     exec(Pid, Cmd, Fold).
 
-
-
-
-cmd_stream_to(Owner, Ref, Parent, X, A) ->
-    case X of
-        {eoc, Error} ->
-            Owner ! {eoc, self(), Error, lists:reverse(A)}, [];
-        {line, L} ->
-            Parent ! {Ref, line, L}, [];
-        {more, L} ->
-            Parent ! {Ref, line, L}, [];
-        done ->
-            A;
-        {error, Rc} ->
-            error({Rc, lists:reverse(A)})
-    end.
-
 exec_stream_sync(Pid, Cmd, Ref, Parent, Opts) ->
     case proplists:get_value(cd, Opts) of
         undefined -> ok;
@@ -116,6 +93,40 @@ exec_stream_sync(Pid, Cmd, Ref, Parent) ->
             {ok, R};
         {eoc, Pid, Error, R} ->
             {error, {Error, R}}
+    end.
+
+
+
+
+
+cmd_aggregate(Owner, X, A) ->
+    case X of
+        {eoc, Error} ->
+            Owner ! {eoc, self(), Error, lists:reverse(A)},
+            [];
+        {line, L} ->
+            [L | A];
+        {more, L} ->
+            [L | A];
+        done ->
+            [];
+        {error, Rc} ->
+            error({Rc, lists:reverse(A)})
+    end.
+
+
+cmd_stream_to(Owner, Ref, Parent, X, A) ->
+    case X of
+        {eoc, Error} ->
+            Owner ! {eoc, self(), Error, lists:reverse(A)}, [];
+        {line, L} ->
+            Parent ! {Ref, line, L}, [];
+        {more, L} ->
+            Parent ! {Ref, line, L}, [];
+        done ->
+            A;
+        {error, Rc} ->
+            error({Rc, lists:reverse(A)})
     end.
 
 
